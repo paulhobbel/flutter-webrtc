@@ -61,6 +61,7 @@ public class RTCAudioManager {
 
   private AudioManagerEvents audioManagerEvents;
   private AudioManagerState amState;
+  private boolean hasFocus;
   private int savedAudioMode = AudioManager.MODE_INVALID;
   private boolean savedIsSpeakerPhoneOn;
   private boolean savedIsMicrophoneMute;
@@ -255,14 +256,17 @@ public class RTCAudioManager {
         AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
     if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
       Log.d(TAG, "Audio focus request granted for VOICE_CALL streams");
+      hasFocus = true;
     } else {
       Log.e(TAG, "Audio focus request failed");
     }
 
-    // Start by setting MODE_IN_COMMUNICATION as default audio mode. It is
-    // required to be in this mode when playout and/or recording starts for
-    // best possible VoIP performance.
-    audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+    if (hasFocus) {
+      // Start by setting MODE_IN_COMMUNICATION as default audio mode. It is
+      // required to be in this mode when playout and/or recording starts for
+      // best possible VoIP performance.
+      audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+    }
 
     // Always disable microphone mute during a WebRTC call.
     setMicrophoneMute(false);
@@ -304,8 +308,10 @@ public class RTCAudioManager {
     // Restore previously stored audio states.
     setSpeakerphoneOn(savedIsSpeakerPhoneOn);
     setMicrophoneMute(savedIsMicrophoneMute);
-    audioManager.setMode(savedAudioMode);
-
+    if (hasFocus) {
+      audioManager.setMode(savedAudioMode);
+    }
+      
     // Abandon audio focus. Gives the previous focus owner, if any, focus.
     audioManager.abandonAudioFocus(audioFocusChangeListener);
     audioFocusChangeListener = null;
